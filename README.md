@@ -72,7 +72,7 @@ A pre-built [Docker image](https://github.com/hwdsl2/docker-ipsec-vpn-server) is
 
 A cloud server, virtual private server (VPS) or dedicated server, with an install of:
 
-- Ubuntu 22.04 or 20.04
+- Ubuntu 24.04, 22.04 or 20.04
 - Debian 12, 11 or 10
 - CentOS 7 or CentOS Stream 9/8
 - Rocky Linux or AlmaLinux 9/8
@@ -161,6 +161,20 @@ https://gitlab.com/hwdsl2/setup-ipsec-vpn/-/raw/master/vpnsetup.sh
 ```
 
 If you are unable to download, open [vpnsetup.sh](vpnsetup.sh), then click the `Raw` button on the right. Press `Ctrl/Cmd+A` to select all, `Ctrl/Cmd+C` to copy, then paste into your favorite editor.
+</details>
+<details>
+<summary>
+I want to install the older Libreswan version 4.
+</summary>
+
+It is generally recommended to use the latest [Libreswan](https://libreswan.org/) version 5, which is the default version in this project. However, if you want to install the older Libreswan version 4:
+
+```bash
+wget https://get.vpnsetup.net -O vpn.sh
+sudo VPN_SWAN_VER=4.15 sh vpn.sh
+```
+
+**Note:** If Libreswan version 5 is already installed, you may need to first [Uninstall the VPN](docs/uninstall.md) before installing Libreswan version 4. Alternatively, download the [update script](#upgrade-libreswan), edit it to specify `SWAN_VER=4.15`, then run the script.
 </details>
 
 ## Customize VPN options
@@ -345,7 +359,7 @@ https://gitlab.com/hwdsl2/setup-ipsec-vpn/-/raw/master/extras/vpnupgrade.sh
 If you are unable to download, open [vpnupgrade.sh](extras/vpnupgrade.sh), then click the `Raw` button on the right. Press `Ctrl/Cmd+A` to select all, `Ctrl/Cmd+C` to copy, then paste into your favorite editor.
 </details>
 
-The latest supported Libreswan version is `4.12`. Check installed version: `ipsec --version`.
+The latest supported Libreswan version is `5.0`. Check installed version: `ipsec --version`.
 
 **Note:** `xl2tpd` can be updated using your system's package manager, such as `apt-get` on Ubuntu/Debian.
 

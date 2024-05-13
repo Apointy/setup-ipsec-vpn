@@ -360,13 +360,25 @@ get_helper_scripts() {
 }
 
 get_swan_ver() {
-  SWAN_VER=4.12
+  SWAN_VER=5.0
   base_url="https://github.com/hwdsl2/vpn-extras/releases/download/v1.0.0"
   swan_ver_url="$base_url/v1-$os_type-$os_ver-swanver"
   swan_ver_latest=$(wget -t 2 -T 10 -qO- "$swan_ver_url" | head -n 1)
   [ -z "$swan_ver_latest" ] && swan_ver_latest=$(curl -m 10 -fsL "$swan_ver_url" 2>/dev/null | head -n 1)
   if printf '%s' "$swan_ver_latest" | grep -Eq '^([3-9]|[1-9][0-9]{1,2})(\.([0-9]|[1-9][0-9]{1,2})){1,2}$'; then
     SWAN_VER="$swan_ver_latest"
+  fi
+  if [ -n "$VPN_SWAN_VER" ]; then
+    if ! printf '%s\n%s' "4.15" "$VPN_SWAN_VER" | sort -C -V \
+      || ! printf '%s\n%s' "$VPN_SWAN_VER" "$SWAN_VER" | sort -C -V; then
+cat 1>&2 <<EOF
+Error: Libreswan version '$VPN_SWAN_VER' is not supported.
+       This script can install Libreswan 4.15+ or $SWAN_VER.
+EOF
+      exit 1
+    else
+      SWAN_VER="$VPN_SWAN_VER"
+    fi
   fi
 }
 
@@ -417,6 +429,7 @@ USE_NSS_KDF=false
 USE_LINUX_AUDIT=false
 USE_SECCOMP=false
 FINALNSSDIR=/etc/ipsec.d
+NSSDIR=/etc/ipsec.d
 EOF
     if ! grep -qs IFLA_XFRM_LINK /usr/include/linux/if_link.h; then
       echo "USE_XFRM_INTERFACE_IFLA_HEADER=true" >> Makefile.inc.local
@@ -425,7 +438,7 @@ EOF
     [ -z "$NPROCS" ] && NPROCS=1
     (
       set -x
-      make "-j$((NPROCS+1))" -s base >/dev/null && make -s install-base >/dev/null
+      make "-j$((NPROCS+1))" -s base >/dev/null 2>&1 && make -s install-base >/dev/null 2>&1
     )
     cd /opt/src || exit 1
     /bin/rm -rf "/opt/src/libreswan-$SWAN_VER"
@@ -452,6 +465,7 @@ cat > /etc/ipsec.conf <<EOF
 version 2.0
 
 config setup
+  ikev1-policy=accept
   virtual-private=%v4:10.0.0.0/8,%v4:192.168.0.0/16,%v4:172.16.0.0/12,%v4:!$L2TP_NET,%v4:!$XAUTH_NET
   uniqueids=no
 
@@ -624,7 +638,11 @@ update_iptables() {
     if [ "$use_nft" != 1 ]; then
       iptables -A FORWARD -j DROP
     fi
-    $ipp -s "$XAUTH_NET" -o "$NET_IFACE" -m policy --dir out --pol none -j MASQUERADE
+    if [ "$use_nft" = 1 ]; then
+      $ipp -s "$XAUTH_NET" -o "$NET_IFACE" ! -d "$XAUTH_NET" -j MASQUERADE
+    else
+      $ipp -s "$XAUTH_NET" -o "$NET_IFACE" -m policy --dir out --pol none -j MASQUERADE
+    fi
     $ipp -s "$L2TP_NET" -o "$NET_IFACE" -j MASQUERADE
     echo "# Modified by hwdsl2 VPN script" > "$IPT_FILE"
     if [ "$use_nft" = 1 ]; then

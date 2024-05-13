@@ -72,7 +72,6 @@ EOF
 
 check_os() {
   os_type=$(lsb_release -si 2>/dev/null)
-  os_arch=$(uname -m | tr -dc 'A-Za-z0-9_-')
   [ -z "$os_type" ] && [ -f /etc/os-release ] && os_type=$(. /etc/os-release && printf '%s' "$ID")
   case $os_type in
     [Uu]buntu)
@@ -89,14 +88,11 @@ check_os() {
       ;;
   esac
   os_ver=$(sed 's/\..*//' /etc/debian_version | tr -dc 'A-Za-z0-9')
-  if [ "$os_ver" = 8 ] || [ "$os_ver" = "jessiesid" ]; then
-    exiterr "Debian 8 or Ubuntu < 16.04 is not supported."
-  fi
-  if [ "$os_type" = "ubuntu" ] && [ "$os_ver" = "bustersid" ] \
-    && [ "$os_arch" != "x86_64" ]; then
+  if [ "$os_ver" = 8 ] || [ "$os_ver" = 9 ] || [ "$os_ver" = "jessiesid" ] \
+    || [ "$os_ver" = "bustersid" ]; then
 cat 1>&2 <<EOF
-Error: For Ubuntu 18.04, this script supports only the x86_64 architecture.
-       This system runs on $os_arch and is unsupported.
+Error: This script requires Debian >= 10 or Ubuntu >= 20.04.
+       This version of Ubuntu/Debian is too old and not supported.
 EOF
     exit 1
   fi
@@ -258,11 +254,13 @@ detect_ip() {
 
 install_vpn_pkgs() {
   bigecho "Installing packages required for the VPN..."
+  p1=libcurl4-nss-dev
+  [ "$os_ver" = "trixiesid" ] && p1=libcurl4-gnutls-dev
   (
     set -x
     apt-get -yqq install libnss3-dev libnspr4-dev pkg-config \
       libpam0g-dev libcap-ng-dev libcap-ng-utils libselinux1-dev \
-      libcurl4-nss-dev flex bison gcc make libnss3-tools \
+      $p1 flex bison gcc make libnss3-tools \
       libevent-dev libsystemd-dev uuid-runtime ppp xl2tpd >/dev/null
   ) || exiterr2
   if [ "$os_type" = "debian" ] && [ "$os_ver" = 12 ]; then
@@ -270,35 +268,6 @@ install_vpn_pkgs() {
       set -x
       apt-get -yqq install rsyslog >/dev/null
     ) || exiterr2
-  fi
-}
-
-install_nss_pkgs() {
-  if [ "$os_type" = "ubuntu" ] && [ "$os_ver" = "bustersid" ] && [ "$os_arch" = "x86_64" ] \
-    && ! dpkg -l libnss3-dev 2>/dev/null | grep -qF '3.49.1'; then
-    base_url="https://github.com/hwdsl2/vpn-extras/releases/download/v1.0.0"
-    nss_url1="https://mirrors.kernel.org/ubuntu/pool/main/n/nss"
-    nss_url2="https://mirrors.kernel.org/ubuntu/pool/universe/n/nss"
-    deb1="libnss3_3.49.1-1ubuntu1.9_amd64.deb"
-    deb2="libnss3-dev_3.49.1-1ubuntu1.9_amd64.deb"
-    deb3="libnss3-tools_3.49.1-1ubuntu1.9_amd64.deb"
-    bigecho "Installing NSS packages on Ubuntu 18.04..."
-    cd /opt/src || exit 1
-    nss_dl=0
-    /bin/rm -f "$deb1" "$deb2" "$deb3"
-    if wget -t 3 -T 30 -q "$base_url/$deb1" "$base_url/$deb2" "$base_url/$deb3"; then
-      apt-get -yqq install "./$deb1" "./$deb2" "./$deb3" >/dev/null
-    else
-      /bin/rm -f "$deb1" "$deb2" "$deb3"
-      if wget -t 3 -T 30 -q "$nss_url1/$deb1" "$nss_url1/$deb2" "$nss_url2/$deb3"; then
-        apt-get -yqq install "./$deb1" "./$deb2" "./$deb3" >/dev/null
-      else
-        nss_dl=1
-        echo "Error: Could not download NSS packages." >&2
-      fi
-    fi
-    /bin/rm -f "$deb1" "$deb2" "$deb3"
-    [ "$nss_dl" = 1 ] && exit 1
   fi
 }
 
@@ -344,13 +313,25 @@ get_helper_scripts() {
 }
 
 get_swan_ver() {
-  SWAN_VER=4.12
+  SWAN_VER=5.0
   base_url="https://github.com/hwdsl2/vpn-extras/releases/download/v1.0.0"
   swan_ver_url="$base_url/v1-$os_type-$os_ver-swanver"
   swan_ver_latest=$(wget -t 2 -T 10 -qO- "$swan_ver_url" | head -n 1)
   [ -z "$swan_ver_latest" ] && swan_ver_latest=$(curl -m 10 -fsL "$swan_ver_url" 2>/dev/null | head -n 1)
   if printf '%s' "$swan_ver_latest" | grep -Eq '^([3-9]|[1-9][0-9]{1,2})(\.([0-9]|[1-9][0-9]{1,2})){1,2}$'; then
     SWAN_VER="$swan_ver_latest"
+  fi
+  if [ -n "$VPN_SWAN_VER" ]; then
+    if ! printf '%s\n%s' "4.15" "$VPN_SWAN_VER" | sort -C -V \
+      || ! printf '%s\n%s' "$VPN_SWAN_VER" "$SWAN_VER" | sort -C -V; then
+cat 1>&2 <<EOF
+Error: Libreswan version '$VPN_SWAN_VER' is not supported.
+       This script can install Libreswan 4.15+ or $SWAN_VER.
+EOF
+      exit 1
+    else
+      SWAN_VER="$VPN_SWAN_VER"
+    fi
   fi
 }
 
@@ -399,6 +380,7 @@ USE_DNSSEC=false
 USE_DH2=true
 USE_NSS_KDF=false
 FINALNSSDIR=/etc/ipsec.d
+NSSDIR=/etc/ipsec.d
 EOF
     if ! grep -qs IFLA_XFRM_LINK /usr/include/linux/if_link.h; then
       echo "USE_XFRM_INTERFACE_IFLA_HEADER=true" >> Makefile.inc.local
@@ -407,7 +389,7 @@ EOF
     [ -z "$NPROCS" ] && NPROCS=1
     (
       set -x
-      make "-j$((NPROCS+1))" -s base >/dev/null && make -s install-base >/dev/null
+      make "-j$((NPROCS+1))" -s base >/dev/null 2>&1 && make -s install-base >/dev/null 2>&1
     )
     cd /opt/src || exit 1
     /bin/rm -rf "/opt/src/libreswan-$SWAN_VER"
@@ -434,6 +416,7 @@ cat > /etc/ipsec.conf <<EOF
 version 2.0
 
 config setup
+  ikev1-policy=accept
   virtual-private=%v4:10.0.0.0/8,%v4:192.168.0.0/16,%v4:172.16.0.0/12,%v4:!$L2TP_NET,%v4:!$XAUTH_NET
   uniqueids=no
 
@@ -790,7 +773,6 @@ vpnsetup() {
   install_setup_pkgs
   detect_ip
   install_vpn_pkgs
-  install_nss_pkgs
   install_fail2ban
   get_helper_scripts
   get_libreswan
