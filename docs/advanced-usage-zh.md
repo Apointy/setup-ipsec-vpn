@@ -33,6 +33,10 @@
 
 高级用户可以在运行 VPN 安装脚本时定义 `VPN_DNS_SRV1` 和 `VPN_DNS_SRV2`（可选）。有关更多详细信息，请参见[自定义 VPN 选项](../README-zh.md#自定义-vpn-选项)。
 
+你可以为特定的 IKEv2 客户端设置不同的 DNS 服务器。对于此用例，请参见 [#1562](https://github.com/hwdsl2/setup-ipsec-vpn/issues/1562#issuecomment-2151361658)。
+
+如果你的用例需要使用 IPTables 规则将 DNS 流量重定向到另一台服务器，请参见 [#1565](https://github.com/hwdsl2/setup-ipsec-vpn/issues/1565)。
+
 在某些情况下，你可能希望 VPN 客户端仅使用指定的 DNS 服务器来解析内部域名，并使用其本地配置的 DNS 服务器来解析所有其他域名。这可以使用 `modecfgdomains` 选项进行配置，例如 `modecfgdomains="internal.example.com, home"`。对于 IKEv2，将此选项添加到 `/etc/ipsec.d/ikev2.conf` 中的 `conn ikev2-cp` 小节。对于 IPsec/XAuth ("Cisco IPsec")，将此选项添加到 `/etc/ipsec.conf` 中的 `conn xauth-psk` 小节。然后运行 `service ipsec restart`。IPsec/L2TP 模式不支持此选项。
 
 ## 域名和更改服务器 IP
@@ -162,20 +166,26 @@ IKEv2 模式：为 VPN 客户端分配静态 IP
      left=%defaultroute
      ... ...
 
+   conn ikev2-shared
+     # 复制/粘贴 ikev2-cp 小节中 *除了下面三项之外* 的所有内容
+     # rightid, rightaddresspool, auto=add
+
    conn client1
      rightid=@client1
      rightaddresspool=192.168.43.4-192.168.43.4
-     also=ikev2-cp
+     auto=add
+     also=ikev2-shared
 
    conn client2
      rightid=@client2
      rightaddresspool=192.168.43.5-192.168.43.5
-     also=ikev2-cp
+     auto=add
+     also=ikev2-shared
    ```
 
    **注：** 为要分配静态 IP 的每个客户端添加一个新的 `conn` 小节。`rightid=` 右边的客户端名称必须添加 `@` 前缀。该客户端名称必须与你在[添加客户端证书](ikev2-howto-zh.md#添加客户端证书)时指定的名称完全一致。分配的静态 IP 必须来自子网 `192.168.43.0/24`，并且必须 **不是** 来自自动分配的 IP 地址池（参见上面的 `rightaddresspool`）。在上面的示例中，你只能分配 `192.168.43.1-192.168.43.99` 范围内的静态 IP。
 
-   **注：** 对于 Windows 7/8/10/11 客户端，你必须对 `rightid=` 使用不同的语法。例如，如果客户端名称为 `client1`，则在上面的示例中设置 `rightid="CN=client1, O=IKEv2 VPN"`。
+   **注：** 对于 Windows 7/8/10/11 和 [RouterOS](ikev2-howto-zh.md#routeros) 客户端，你必须对 `rightid=` 使用不同的语法。例如，如果客户端名称为 `client1`，则在上面的示例中设置 `rightid="CN=client1, O=IKEv2 VPN"`。
 1. **（重要）** 重启 IPsec 服务：
    ```
    service ipsec restart
@@ -228,11 +238,6 @@ iptables -t nat -I POSTROUTING -s 192.168.42.0/24 -o "$netif" -j SNAT --to 192.0
 
 **重要：** 你只能在 **初始 VPN 安装时** 指定自定义子网。如果 IPsec VPN 已安装，你 **必须** 首先 [卸载 VPN](uninstall-zh.md)，然后指定自定义子网并重新安装。否则，VPN 可能会停止工作。
 
-<details>
-<summary>
-首先，请阅读上面的重要说明。然后点这里查看示例。
-</summary>
-
 ```
 # 示例：为 IPsec/L2TP 模式指定自定义 VPN 子网
 # 注：必须指定所有三个变量。
@@ -251,7 +256,6 @@ sh vpn.sh
 ```
 
 在上面的例子中，`VPN_L2TP_LOCAL` 是在 IPsec/L2TP 模式下的 VPN 服务器的内网 IP。`VPN_L2TP_POOL` 和 `VPN_XAUTH_POOL` 是为 VPN 客户端自动分配的 IP 地址池。
-</details>
 
 ## 转发端口到 VPN 客户端
 
@@ -293,8 +297,13 @@ IPsec/XAuth ("Cisco IPsec") 模式：启用 VPN 分流 (split tunneling)
 下面的示例 **仅适用于** IPsec/XAuth ("Cisco IPsec") 模式。这些命令必须用 `root` 账户运行。
 
 1. 编辑 VPN 服务器上的 `/etc/ipsec.conf`。在 `conn xauth-psk` 小节中，将 `leftsubnet=0.0.0.0/0` 替换为你想要 VPN 客户端通过 VPN 隧道发送流量的子网。例如：   
+   对于单个子网：
    ```
    leftsubnet=10.123.123.0/24
+   ```
+   对于多个子网（使用 `leftsubnets`）：
+   ```
+   leftsubnets="10.123.123.0/24,10.100.0.0/16"
    ```
 1. **（重要）** 重启 IPsec 服务：
    ```
@@ -310,8 +319,13 @@ IKEv2 模式：启用 VPN 分流 (split tunneling)
 下面的示例 **仅适用于** IKEv2 模式。这些命令必须用 `root` 账户运行。
 
 1. 编辑 VPN 服务器上的 `/etc/ipsec.d/ikev2.conf`。在 `conn ikev2-cp` 小节中，将 `leftsubnet=0.0.0.0/0` 替换为你想要 VPN 客户端通过 VPN 隧道发送流量的子网。例如：   
+   对于单个子网：
    ```
    leftsubnet=10.123.123.0/24
+   ```
+   对于多个子网（使用 `leftsubnets`）：
+   ```
+   leftsubnets="10.123.123.0/24,10.100.0.0/16"
    ```
 1. **（重要）** 重启 IPsec 服务：
    ```
@@ -386,7 +400,7 @@ iptables -t nat -I POSTROUTING -s 192.168.42.0/24 -o "$netif" -j MASQUERADE
 
 如果你想要在安装后更改 IPTables 规则，请编辑 `/etc/iptables.rules` 和/或 `/etc/iptables/rules.v4` (Ubuntu/Debian)，或者 `/etc/sysconfig/iptables` (CentOS/RHEL)。然后重启服务器。
 
-**注：** 如果使用 Rocky Linux, AlmaLinux, Oracle Linux 8 或者 CentOS/RHEL 8 并且在安装 VPN 时 firewalld 正在运行，则可能已配置 nftables。在这种情况下，编辑 `/etc/sysconfig/nftables.conf` 而不是 `/etc/sysconfig/iptables`。
+**注：** 如果你的服务器运行 CentOS Linux（或类似系统），并且在安装 VPN 时 firewalld 处于活动状态，则可能已配置 nftables。在这种情况下，编辑 `/etc/sysconfig/nftables.conf` 而不是 `/etc/sysconfig/iptables`。
 
 ## 部署 Google BBR 拥塞控制
 

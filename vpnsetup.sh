@@ -81,14 +81,15 @@ check_os() {
     elif grep -q "release 8" "$rh_file"; then
       os_ver=8
       grep -qi stream "$rh_file" && os_ver=8s
-      if [ "$os_type$os_ver" = "centos8" ]; then
-        exiterr "CentOS Linux 8 is EOL and not supported."
-      fi
     elif grep -q "release 9" "$rh_file"; then
       os_ver=9
       grep -qi stream "$rh_file" && os_ver=9s
     else
       exiterr "This script only supports CentOS/RHEL 7-9."
+    fi
+    if [ "$os_type" = "centos" ] \
+      && { [ "$os_ver" = 7 ] || [ "$os_ver" = 8 ] || [ "$os_ver" = 8s ]; }; then
+      exiterr "CentOS Linux $os_ver is EOL and not supported."
     fi
   elif grep -qs "Amazon Linux release 2 " /etc/system-release; then
     os_type=amzn
@@ -122,16 +123,24 @@ EOF
     esac
     if [ "$os_type" = "alpine" ]; then
       os_ver=$(. /etc/os-release && printf '%s' "$VERSION_ID" | cut -d '.' -f 1,2)
-      if [ "$os_ver" != "3.18" ] && [ "$os_ver" != "3.19" ]; then
-        exiterr "This script only supports Alpine Linux 3.18/3.19."
+      if [ "$os_ver" != "3.19" ] && [ "$os_ver" != "3.20" ]; then
+        exiterr "This script only supports Alpine Linux 3.19/3.20."
       fi
     else
       os_ver=$(sed 's/\..*//' /etc/debian_version | tr -dc 'A-Za-z0-9')
-      if [ "$os_ver" = 8 ] || [ "$os_ver" = 9 ] || [ "$os_ver" = "jessiesid" ] \
+      if [ "$os_ver" = 8 ] || [ "$os_ver" = 9 ] || [ "$os_ver" = "stretchsid" ] \
         || [ "$os_ver" = "bustersid" ]; then
 cat 1>&2 <<EOF
 Error: This script requires Debian >= 10 or Ubuntu >= 20.04.
        This version of Ubuntu/Debian is too old and not supported.
+EOF
+        exit 1
+      fi
+      if [ "$os_ver" = "trixiesid" ] && [ -f /etc/os-release ] \
+        && [ "$(. /etc/os-release && printf '%s' "$VERSION_ID")" = "24.10" ]; then
+cat 1>&2 <<EOF
+Error: This script does not support Ubuntu 24.10.
+       You may use e.g. Ubuntu 24.04 LTS instead.
 EOF
         exit 1
       fi

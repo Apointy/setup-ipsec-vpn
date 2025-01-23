@@ -10,7 +10,7 @@ An IPsec VPN encrypts your network traffic, so that nobody between you and the V
 
 We will use [Libreswan](https://libreswan.org/) as the IPsec server, and [xl2tpd](https://github.com/xelerance/xl2tpd) as the L2TP provider.
 
-**[&raquo; :book: Book: Build Your Own VPN Server: A Step by Step Guide](https://books2read.com/vpnguide?store=amazon)**
+**[&raquo; :book: Book: Build Your Own VPN Server](https://books2read.com/vpnguide)** [[English](https://books2read.com/vpnguide) | [中文](https://books2read.com/vpnguidezh) | [Español](https://books2read.com/vpnguidees) | [Deutsch](https://books2read.com/vpnguidede) | [Français](https://books2read.com/vpnguidefr) | [Italiano](https://books2read.com/vpnguideit) | [PT](https://books2read.com/vpnguidept?store=amazon) | [日本語](https://books2read.com/vpnguideja?store=amazon)]
 
 ## Quick start
 
@@ -73,10 +73,10 @@ A pre-built [Docker image](https://github.com/hwdsl2/docker-ipsec-vpn-server) is
 A cloud server, virtual private server (VPS) or dedicated server, with an install of:
 
 - Ubuntu 24.04, 22.04 or 20.04
-- Debian 12, 11 or 10
-- CentOS 7 or CentOS Stream 9/8
-- Rocky Linux or AlmaLinux 9/8
-- Oracle Linux 9, 8 or 7
+- Debian 12 or 11
+- CentOS Stream 9
+- Rocky Linux or AlmaLinux
+- Oracle Linux
 - Amazon Linux 2
 
 <details>
@@ -294,7 +294,7 @@ For reference: List of IKEv1 and IKEv2 parameters.
 
 \* These IKEv2 parameters are for IKEv2 mode.   
 \*\* Define these as environment variables when running vpn(setup).sh, or when setting up IKEv2 in auto mode (`sudo ikev2.sh --auto`).   
-\*\*\* Can be customized during interactive IKEv2 setup (`sudo ikev2.sh`). Refer to option 2 above.   
+\*\*\* Can be customized during interactive IKEv2 setup (`sudo ikev2.sh`). Refer to option 1 above.   
 \*\*\*\* Use `VPN_CLIENT_VALIDITY` to specify the client cert validity period in months. Must be an integer between 1 and 120.
 
 In addition to these parameters, advanced users can also [customize VPN subnets](docs/advanced-usage.md#customize-vpn-subnets) during VPN setup.
@@ -332,7 +332,7 @@ The scripts will backup existing config files before making changes, with `.old-
 
 ## Upgrade Libreswan
 
-Use this one-liner to update [Libreswan](https://libreswan.org) ([changelog](https://github.com/libreswan/libreswan/blob/main/CHANGES) | [announce](https://lists.libreswan.org/mailman/listinfo/swan-announce)) on your VPN server.
+Use this one-liner to update [Libreswan](https://libreswan.org) ([changelog](https://github.com/libreswan/libreswan/blob/main/CHANGES) | [announce](https://lists.libreswan.org)) on your VPN server.
 
 ```bash
 wget https://get.vpnsetup.net/upg -O vpnup.sh && sudo sh vpnup.sh
@@ -359,7 +359,7 @@ https://gitlab.com/hwdsl2/setup-ipsec-vpn/-/raw/master/extras/vpnupgrade.sh
 If you are unable to download, open [vpnupgrade.sh](extras/vpnupgrade.sh), then click the `Raw` button on the right. Press `Ctrl/Cmd+A` to select all, `Ctrl/Cmd+C` to copy, then paste into your favorite editor.
 </details>
 
-The latest supported Libreswan version is `5.0`. Check installed version: `ipsec --version`.
+The latest supported Libreswan version is `5.1`. Check installed version: `ipsec --version`.
 
 **Note:** `xl2tpd` can be updated using your system's package manager, such as `apt-get` on Ubuntu/Debian.
 

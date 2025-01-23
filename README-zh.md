@@ -10,7 +10,7 @@ IPsec VPN 可以加密你的网络流量，以防止在通过因特网传送时�
 
 我们将使用 [Libreswan](https://libreswan.org/) 作为 IPsec 服务器，以及 [xl2tpd](https://github.com/xelerance/xl2tpd) 作为 L2TP 提供者。
 
-**[&raquo; :book: Book: 搭建自己的 VPN 服务器分步指南](https://books2read.com/vpnguidezh)**
+**[&raquo; :book: Book: 搭建自己的 VPN 服务器分步指南](https://books2read.com/vpnguidezh)** [[中文](https://books2read.com/vpnguidezh) | [English](https://books2read.com/vpnguide) | [Español](https://books2read.com/vpnguidees) | [Deutsch](https://books2read.com/vpnguidede) | [Français](https://books2read.com/vpnguidefr) | [Italiano](https://books2read.com/vpnguideit) | [PT](https://books2read.com/vpnguidept?store=amazon) | [日本語](https://books2read.com/vpnguideja?store=amazon)]
 
 ## 快速开始
 
@@ -73,10 +73,10 @@ https://gitlab.com/hwdsl2/setup-ipsec-vpn/-/raw/master/vpnsetup.sh
 一个云服务器，虚拟专用服务器 (VPS) 或者专用服务器，安装以下操作系统之一：
 
 - Ubuntu 24.04, 22.04 或者 20.04
-- Debian 12, 11 或者 10
-- CentOS 7 或者 CentOS Stream 9/8
-- Rocky Linux 或者 AlmaLinux 9/8
-- Oracle Linux 9, 8 或者 7
+- Debian 12 或者 11
+- CentOS Stream 9
+- Rocky Linux 或者 AlmaLinux
+- Oracle Linux
 - Amazon Linux 2
 
 <details>
@@ -294,7 +294,7 @@ sudo VPN_PROTECT_CONFIG=yes sh vpn.sh
 
 \* 这些 IKEv2 参数适用于 IKEv2 模式。   
 \*\* 在运行 vpn(setup).sh 时，或者在自动模式下配置 IKEv2 时 (`sudo ikev2.sh --auto`) 将这些定义为环境变量。   
-\*\*\* 可以在交互式配置 IKEv2 期间自定义 (`sudo ikev2.sh`)。参见上面的选项 2。   
+\*\*\* 可以在交互式配置 IKEv2 期间自定义 (`sudo ikev2.sh`)。参见上面的选项 1。   
 \*\*\*\* 使用 `VPN_CLIENT_VALIDITY` 定义客户端证书的有效期（单位：月）。它必须是 1 到 120 之间的整数。
 
 除了这些参数，高级用户还可以在安装时 [自定义 VPN 子网](docs/advanced-usage-zh.md#自定义-vpn-子网)。
@@ -332,7 +332,7 @@ sudo VPN_PROTECT_CONFIG=yes sh vpn.sh
 
 ## 升级Libreswan
 
-使用以下命令更新你的 VPN 服务器上的 [Libreswan](https://libreswan.org)（[更新日志](https://github.com/libreswan/libreswan/blob/main/CHANGES) | [通知列表](https://lists.libreswan.org/mailman/listinfo/swan-announce)）。
+使用以下命令更新你的 VPN 服务器上的 [Libreswan](https://libreswan.org)（[更新日志](https://github.com/libreswan/libreswan/blob/main/CHANGES) | [通知列表](https://lists.libreswan.org)）。
 
 ```bash
 wget https://get.vpnsetup.net/upg -O vpnup.sh && sudo sh vpnup.sh
@@ -359,7 +359,7 @@ https://gitlab.com/hwdsl2/setup-ipsec-vpn/-/raw/master/extras/vpnupgrade.sh
 如果无法下载，打开 [vpnupgrade.sh](extras/vpnupgrade.sh)，然后点击右边的 `Raw` 按钮。按快捷键 `Ctrl/Cmd+A` 全选，`Ctrl/Cmd+C` 复制，然后粘贴到你喜欢的编辑器。
 </details>
 
-当前支持的 Libreswan 最新版本是 `5.0`。查看已安装版本：`ipsec --version`。
+当前支持的 Libreswan 最新版本是 `5.1`。查看已安装版本：`ipsec --version`。
 
 **注：** `xl2tpd` 可以使用系统的软件包管理器进行更新，例如 Ubuntu/Debian 上的 `apt-get`。
 

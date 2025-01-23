@@ -33,6 +33,10 @@ Below is a list of some popular public DNS providers for your reference.
 
 Advanced users can define `VPN_DNS_SRV1` and optionally `VPN_DNS_SRV2` when running the VPN setup script. For more details, see [Customize VPN options](../README.md#customize-vpn-options).
 
+It is possible to set different DNS server(s) for specific IKEv2 client(s). For this use case, please refer to [#1562](https://github.com/hwdsl2/setup-ipsec-vpn/issues/1562#issuecomment-2151361658).
+
+If your use case requires redirecting DNS traffic to another server using IPTables rules, see [#1565](https://github.com/hwdsl2/setup-ipsec-vpn/issues/1565).
+
 In certain circumstances, you may want VPN clients to use the specified DNS server(s) only for resolving internal domain name(s), and use their locally configured DNS servers to resolve all other domain names. This can be configured using the `modecfgdomains` option, e.g. `modecfgdomains="internal.example.com, home"`. Add this option to section `conn ikev2-cp` in `/etc/ipsec.d/ikev2.conf` for IKEv2, and to section `conn xauth-psk` in `/etc/ipsec.conf` for IPsec/XAuth ("Cisco IPsec"). Then run `service ipsec restart`. IPsec/L2TP mode does not support this option.
 
 ## DNS name and server IP changes
@@ -162,20 +166,26 @@ The example below **ONLY** applies to IKEv2 mode. Commands must be run as `root`
      left=%defaultroute
      ... ...
 
+   conn ikev2-shared
+     # COPY everything from the ikev2-cp section, EXCEPT FOR:
+     # rightid, rightaddresspool, auto=add
+
    conn client1
      rightid=@client1
      rightaddresspool=192.168.43.4-192.168.43.4
-     also=ikev2-cp
+     auto=add
+     also=ikev2-shared
 
    conn client2
      rightid=@client2
      rightaddresspool=192.168.43.5-192.168.43.5
-     also=ikev2-cp
+     auto=add
+     also=ikev2-shared
    ```
 
    **Note:** Add a new `conn` section for each client that you want to assign a static IP to. You must add a `@` prefix to the client name for `rightid=`. The client name must exactly match the name you specified when [adding the client certificate](ikev2-howto.md#add-a-client-certificate). The assigned static IP(s) must be from the subnet `192.168.43.0/24`, and must NOT be from the pool of auto-assigned IPs (see `rightaddresspool` above). In the example above, you can only assign static IP(s) from the range `192.168.43.1-192.168.43.99`.
 
-   **Note:** For Windows 7/8/10/11 clients, you must use a different syntax for `rightid=`. For example, if the client name is `client1`, set `rightid="CN=client1, O=IKEv2 VPN"` in the example above.
+   **Note:** For Windows 7/8/10/11 and [RouterOS](ikev2-howto.md#routeros) clients, you must use a different syntax for `rightid=`. For example, if the client name is `client1`, set `rightid="CN=client1, O=IKEv2 VPN"` in the example above.
 1. **(Important)** Restart the IPsec service:
    ```
    service ipsec restart
@@ -228,11 +238,6 @@ For most use cases, it is NOT necessary and NOT recommended to customize these s
 
 **Important:** You may only specify custom subnets **during initial VPN install**. If the IPsec VPN is already installed, you **must** first [uninstall the VPN](uninstall.md), then specify custom subnets and re-install. Otherwise, the VPN may stop working.
 
-<details>
-<summary>
-First, read the important note above. Then click here for examples.
-</summary>
-
 ```
 # Example: Specify custom VPN subnet for IPsec/L2TP mode
 # Note: All three variables must be specified.
@@ -251,7 +256,6 @@ sh vpn.sh
 ```
 
 In the examples above, `VPN_L2TP_LOCAL` is the VPN server's internal IP for IPsec/L2TP mode. `VPN_L2TP_POOL` and `VPN_XAUTH_POOL` are the pools of auto-assigned IP addresses for VPN clients.
-</details>
 
 ## Port forwarding to VPN clients
 
@@ -281,7 +285,7 @@ If you want the rules to persist after reboot, you may add these commands to `/e
 
 ## Split tunneling
 
-With split tunneling, VPN clients will only send traffic for a specific destination subnet through the VPN tunnel. Other traffic will NOT go through the VPN tunnel. This allows you to gain secure access to a network through your VPN, without routing all your client's traffic through the VPN. Split tunneling has some limitations, and is not supported by all VPN clients.
+With split tunneling, VPN clients will only send traffic for specific destination subnet(s) through the VPN tunnel. Other traffic will NOT go through the VPN tunnel. This allows you to gain secure access to a network through your VPN, without routing all your client's traffic through the VPN. Split tunneling has some limitations, and is not supported by all VPN clients.
 
 Advanced users can optionally enable split tunneling for the [IPsec/XAuth ("Cisco IPsec")](clients-xauth.md) and/or [IKEv2](ikev2-howto.md) modes. Expand for details. IPsec/L2TP mode does not support this feature (except on Windows, see below).
 
@@ -292,9 +296,14 @@ IPsec/XAuth ("Cisco IPsec") mode: Enable split tunneling
 
 The example below **ONLY** applies to IPsec/XAuth ("Cisco IPsec") mode. Commands must be run as `root`.
 
-1. Edit `/etc/ipsec.conf` on the VPN server. In the section `conn xauth-psk`, replace `leftsubnet=0.0.0.0/0` with the subnet you want VPN clients to send traffic through the VPN tunnel. For example:   
+1. Edit `/etc/ipsec.conf` on the VPN server. In the section `conn xauth-psk`, replace `leftsubnet=0.0.0.0/0` with the subnet(s) you want VPN clients to send traffic through the VPN tunnel. For example:   
+   For a single subnet:
    ```
    leftsubnet=10.123.123.0/24
+   ```
+   For multiple subnets (use `leftsubnets` instead):
+   ```
+   leftsubnets="10.123.123.0/24,10.100.0.0/16"
    ```
 1. **(Important)** Restart the IPsec service:
    ```
@@ -309,9 +318,14 @@ IKEv2 mode: Enable split tunneling
 
 The example below **ONLY** applies to IKEv2 mode. Commands must be run as `root`.
 
-1. Edit `/etc/ipsec.d/ikev2.conf` on the VPN server. In the section `conn ikev2-cp`, replace `leftsubnet=0.0.0.0/0` with the subnet you want VPN clients to send traffic through the VPN tunnel. For example:   
+1. Edit `/etc/ipsec.d/ikev2.conf` on the VPN server. In the section `conn ikev2-cp`, replace `leftsubnet=0.0.0.0/0` with the subnet(s) you want VPN clients to send traffic through the VPN tunnel. For example:   
+   For a single subnet:
    ```
    leftsubnet=10.123.123.0/24
+   ```
+   For multiple subnets (use `leftsubnets` instead):
+   ```
+   leftsubnets="10.123.123.0/24,10.100.0.0/16"
    ```
 1. **(Important)** Restart the IPsec service:
    ```
@@ -385,9 +399,9 @@ Learn more about internal VPN IPs in [Internal VPN IPs and traffic](#internal-vp
 
 ## Modify IPTables rules
 
-If you want to modify the IPTables rules after install, edit `/etc/iptables.rules` and/or `/etc/iptables/rules.v4` (Ubuntu/Debian), or `/etc/sysconfig/iptables` (CentOS/RHEL). Then reboot your server.
+If you want to modify IPTables rules after install, edit `/etc/iptables.rules` and/or `/etc/iptables/rules.v4` (Ubuntu/Debian), or `/etc/sysconfig/iptables` (CentOS/RHEL). Then reboot your server.
 
-**Note:** If using Rocky Linux, AlmaLinux, Oracle Linux 8 or CentOS/RHEL 8 and firewalld was active during VPN setup, nftables may be configured. In this case, edit `/etc/sysconfig/nftables.conf` instead of `/etc/sysconfig/iptables`.
+**Note:** If your server runs CentOS Linux (or similar), and firewalld was active during VPN setup, nftables may be configured. In this case, edit `/etc/sysconfig/nftables.conf` instead of `/etc/sysconfig/iptables`.
 
 ## Deploy Google BBR congestion control
 

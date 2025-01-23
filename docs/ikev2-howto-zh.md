@@ -40,8 +40,6 @@ Libreswan 支持通过使用 RSA 签名算法的 X.509 Machine Certificates 来�
 在某些情况下，你可能需要更改 IKEv2 服务器地址，例如切换为使用域名，或者在服务器的 IP 更改之后。要了解更多信息，参见 [这一小节](#更改-ikev2-服务器地址)。
 </details>
 
-**阅读 [:book: VPN book](https://ko-fi.com/post/Support-this-project-and-get-access-to-supporter-o-X8X5FVFZC) 以访问 [额外内容](https://ko-fi.com/post/Support-this-project-and-get-access-to-supporter-o-X8X5FVFZC)。**
-
 ### Windows 7, 8, 10 和 11
 
 #### 自动导入配置
@@ -577,6 +575,7 @@ sudo chmod 600 ca.cer client.cer client.key
 **另见：** [检查日志及 VPN 状态](clients-zh.md#检查日志及-vpn-状态)，[IKEv1 故障排除](clients-zh.md#ikev1-故障排除) 和 [高级用法](advanced-usage-zh.md)。
 
 * [无法连接到 VPN 服务器](#无法连接到-vpn-服务器)
+* [Ubuntu 20.04 无法导入客户端配置](#ubuntu-2004-无法导入客户端配置)
 * [macOS Sonoma 客户端重新连接](#macos-sonoma-客户端重新连接)
 * [无法连接多个 IKEv2 客户端](#无法连接多个-ikev2-客户端)
 * [IKE 身份验证凭证不可接受](#ike-身份验证凭证不可接受)
@@ -593,6 +592,12 @@ sudo chmod 600 ca.cer client.cer client.key
 对于有外部防火墙的服务器（比如 [EC2](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-security-groups.html)/[GCE](https://cloud.google.com/vpc/docs/firewalls)），请为 VPN 打开 UDP 端口 500 和 4500。阿里云用户请参见 [#433](https://github.com/hwdsl2/setup-ipsec-vpn/issues/433)。
 
 [检查日志及 VPN 状态](clients-zh.md#检查日志及-vpn-状态)是否有错误。如果你遇到 retransmission 相关错误并且无法连接，说明 VPN 客户端和服务器之间的网络可能有问题。如果你从中国大陆进行连接，请考虑改用 IPsec VPN 以外的其他解决方案。
+
+### Ubuntu 20.04 无法导入客户端配置
+
+如果你在 2024-04-10 之前安装了 IPsec VPN，并且你的 VPN 服务器运行的是 Ubuntu Linux 版本 20.04，那么你可能会遇到无法在 iOS 或 macOS 设备上导入新生成的客户端配置文件 (`.mobileconfig`) 的问题，例如提示密码不正确。这可能是由 Ubuntu 20.04 上 libnss3 相关软件包的更新引起的，需要对 IKEv2 脚本进行一些更改 ([25670f3](https://github.com/hwdsl2/setup-ipsec-vpn/commit/25670f3))。
+
+要解决此问题，请首先按照[这些步骤](#更新-ikev2-辅助脚本)将服务器上的 IKEv2 脚本更新到最新版本。然后运行 `sudo ikev2.sh` 并选择 "export" 以重新创建客户端配置文件。
 
 ### macOS Sonoma 客户端重新连接
 
@@ -905,7 +910,7 @@ chmod +x /opt/src/ikev2.sh && ln -s /opt/src/ikev2.sh /usr/bin 2>/dev/null
 
 **注：** 默认情况下，运行 VPN 安装脚本时会自动配置 IKEv2。你可以跳过此部分并转到 [配置 IKEv2 VPN 客户端](#配置-ikev2-vpn-客户端)。
 
-**重要：** 在继续之前，你应该已经成功地 [搭建自己的 VPN 服务器](../README-zh.md)。**Docker 用户请看 [这里](https://github.com/hwdsl2/docker-ipsec-vpn-server/blob/master/README-zh.md#配置并使用-ikev2-vpn)**。
+**重要：** 在继续之前，你应该已经成功地 [搭建自己的 VPN 服务器](../README-zh.md)。Docker 用户请看 [配置并使用 IKEv2 VPN](https://github.com/hwdsl2/docker-ipsec-vpn-server/blob/master/README-zh.md#配置并使用-ikev2-vpn)。
 
 使用这个 [辅助脚本](../extras/ikev2setup.sh) 来自动地在 VPN 服务器上配置 IKEv2：
 

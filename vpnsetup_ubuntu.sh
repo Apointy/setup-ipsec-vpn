@@ -88,11 +88,19 @@ check_os() {
       ;;
   esac
   os_ver=$(sed 's/\..*//' /etc/debian_version | tr -dc 'A-Za-z0-9')
-  if [ "$os_ver" = 8 ] || [ "$os_ver" = 9 ] || [ "$os_ver" = "jessiesid" ] \
+  if [ "$os_ver" = 8 ] || [ "$os_ver" = 9 ] || [ "$os_ver" = "stretchsid" ] \
     || [ "$os_ver" = "bustersid" ]; then
 cat 1>&2 <<EOF
 Error: This script requires Debian >= 10 or Ubuntu >= 20.04.
        This version of Ubuntu/Debian is too old and not supported.
+EOF
+    exit 1
+  fi
+  if [ "$os_ver" = "trixiesid" ] && [ -f /etc/os-release ] \
+    && [ "$(. /etc/os-release && printf '%s' "$VERSION_ID")" = "24.10" ]; then
+cat 1>&2 <<EOF
+Error: This script does not support Ubuntu 24.10.
+       You may use e.g. Ubuntu 24.04 LTS instead.
 EOF
     exit 1
   fi
@@ -313,7 +321,7 @@ get_helper_scripts() {
 }
 
 get_swan_ver() {
-  SWAN_VER=5.0
+  SWAN_VER=5.1
   base_url="https://github.com/hwdsl2/vpn-extras/releases/download/v1.0.0"
   swan_ver_url="$base_url/v1-$os_type-$os_ver-swanver"
   swan_ver_latest=$(wget -t 2 -T 10 -qO- "$swan_ver_url" | head -n 1)

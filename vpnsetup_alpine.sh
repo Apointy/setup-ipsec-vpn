@@ -70,8 +70,8 @@ check_os() {
       ;;
   esac
   os_ver=$(. /etc/os-release && printf '%s' "$VERSION_ID" | cut -d '.' -f 1,2)
-  if [ "$os_ver" != "3.18" ] && [ "$os_ver" != "3.19" ]; then
-    exiterr "This script only supports Alpine Linux 3.18/3.19."
+  if [ "$os_ver" != "3.19" ] && [ "$os_ver" != "3.20" ]; then
+    exiterr "This script only supports Alpine Linux 3.19/3.20."
   fi
 }
 
@@ -240,7 +240,7 @@ get_helper_scripts() {
 }
 
 get_swan_ver() {
-  SWAN_VER=5.0
+  SWAN_VER=5.1
   base_url="https://github.com/hwdsl2/vpn-extras/releases/download/v1.0.0"
   swan_ver_url="$base_url/v1-$os_type-$os_ver-swanver"
   swan_ver_latest=$(wget -t 2 -T 10 -qO- "$swan_ver_url" | head -n 1)
